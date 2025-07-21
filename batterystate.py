@@ -4,7 +4,7 @@ import time
 class BatteryState:
     def __init__( self ):
         self.vsys       = ADC(Pin(29))      # reads the system input voltage
-        self.conversion = 3 * (3.3 / 65535)
+        self.conversion = 3 * 3.3 / 65535
         self.full       = 4.2               # these are our reference voltages for a full/empty battery, in volts
         self.empty      = 2.8               # the values could vary by battery size/manufacturer so you might need to adjust them
 
@@ -36,5 +36,7 @@ class BatteryState:
 
 if __name__ == "__main__":
     bat = BatteryState()
-    print( f"Voltage = {bat.getVoltage()}" )
-    print( f"Percentage: {bat.getPercentage()}" )
+    while True:
+        print( f"Voltage = {bat.getVoltage()}" )
+        print( f"Percentage: {bat.getPercentage()}" )
+        time.sleep(1)

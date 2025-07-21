@@ -37,12 +37,39 @@ def dummy( item ):
     print( f"Called {item}" )
     
 def scaleValue( value, start,stop):
+    '''
+    Given the value passed in, convert it so that it is between the start
+    and stop values passed as well.
+    
+    Parameters:
+        value - The value we wish to scale
+        start - The start of the range
+        stop  - The end of the range
+        
+    Returns:
+        The scaled value.
+    '''
     result = abs(value) + start
     if result > stop:
         result = stop
     return result
 
-def displayLine( xstart, ystart, height):
+def displayGraphLine( xstart, ystart, height):
+    '''
+    Display a bar graph line.  The assumption is that the color of the line
+    is already set.  In order to draw the line we create a rectangle 2 pixels
+    wide.
+    
+    Two more rectangles are drawn, one *above* the area we just drew clearing
+    out anything that may be left over, and then another one is drawn using the
+    full range in GREY to poing out where we are currently observing.
+    
+    Parameters:
+        xstart - x position of the start of the graph
+        ystart - y position of the start of the graph
+        height - how high does the rectangle go relative to the ystart position
+
+    '''
     display.rectangle( xstart, ystart, 2, height-ystart )
     display.set_pen( Display.BLACK )
     display.rectangle( xstart, 102, 2, ystart-102)
@@ -90,7 +117,7 @@ def watchSingleNetwork( item ):
             panel.textAt( f"Security:\t{lan.getSecurity()}", 3, Display.GREY,tabs=tabs)
             value = scaleValue( lan.rssi, 100, graphHeight )
             display.set_pen( item.getColor() )
-            displayLine( xpos, value, graphHeight)
+            displayGraphLine( xpos, value, graphHeight)
             xpos += 2
             if xpos > graphWidth:
                 xpos = panel.startx
@@ -100,11 +127,20 @@ def watchSingleNetwork( item ):
         time.sleep( 0.1 )
     return True
 
-def systemStatus(item):  
+def systemStatus(item):
+    '''
+    Display the status of the system, i.e. current battery level, memory available etc.
+    
+    Parameters:
+         item - an item function from the object that was selected by the listbox,
+                not used.
+    '''
     panel = display.createPanel( 'System Status' )
     count = 0
     tabs = [0, 180]
     panel.displayPanel(False)
+    
+    bs = BatteryState()
     
     while not display.getCancelButton():
         if count % 20 == 0:
@@ -199,7 +235,6 @@ def networkDisplay(item):
             running = function( item )
     return False
     
-bs = BatteryState()
 scanner = BLEScanner(bluetooth.BLE(),watchSingleBLE)
 wscanner  =  WIFIScanner()
 display = Display()
@@ -209,7 +244,7 @@ mainItems.append( BaseItem( f"Status",    systemStatus ) )
 mainItems.append( BaseItem( f"BlueTooth", bluetoothDisplay ) )
 mainItems.append( BaseItem( f"Networks",  networkDisplay ) )
 
-mainPanel = display.createListBox( "System Status" )
+mainPanel = display.createListBox( "NetMonitor v1.0" )
 mainPanel.setList( mainItems )
 
 gc.enable()
