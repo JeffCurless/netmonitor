@@ -9,6 +9,8 @@ from machine import Pin
 from batterystate import BatteryState
 import time
 
+from displayhelper import *
+
 TEXT_HEIGHT = 18
 BACKGROUND = 2
 
@@ -16,47 +18,6 @@ button_a = Button(12)
 button_b = Button(13)
 button_x = Button(14)
 button_y = Button(15)
-
-class BaseItem:
-    def __init__(self, text, function):
-        '''
-        Initialize the default base item.  All items should have the methods in
-        this item, as they are utilized to display information in listboxes,
-        and any other kind of UI selector.
-        '''
-        self.text     = text
-        self.function = function
-        
-    def getFunction(self):
-        '''
-        Return the function that is stored in the base item.  All functions in
-        will be called with this item as a parameter so the function can have
-        some kind of context.
-        
-        Returns:
-            self.function is returned
-        '''
-        return self.function
-    
-    def getColor( self ):
-        '''
-        Get the color to display the text it.  We default to GREY.  This allows
-        items to be created that may want to change the color of an item based
-        on some internal parameter.
-        
-        Returns:
-            The defauult color that text in a list box should be created with.
-        '''
-        return Display.GREY
-    
-    def __str__(self):
-        '''
-        Override the default dunder function to return text if this object
-        
-        Return:
-            The text string
-        '''
-        return self.text
     
 class Panel:
     def __init__( self, display, title ):
@@ -128,9 +89,9 @@ class Panel:
         if update:
             self.display.update()
             
-    def textAt( self, message, line, color, tabs=None ):
+    def textAt( self, message, line, color, tabs=None, wrap=True ):
         self.display.set_pen( color )
-        self.display.textAt( message, line, tabs )
+        self.display.textAt( message, line, tabs, wrap )
     
     def textAtClear( self, line ):
         self.display.textAtClear( line )
@@ -152,7 +113,8 @@ class ListBoxPanel(Panel):
         xOffset = self.startx
         yOffset = self.starty
         count = 0
-        for item in self.itemList[start:]:
+        for i in range( start, len(self.itemList), 1 ):
+            item = self.itemList[i]
             self.display.set_pen( item.getColor() )
             self.display.text( str(item), xOffset, yOffset, tabs=self.tabs )
             yOffset += TEXT_HEIGHT
@@ -179,7 +141,7 @@ class ListBoxPanel(Panel):
         self.display.set_pen( Display.BLACK )
         self.display.rectangle( BACKGROUND, self.starty, self.display.listWidth, self.height)
         
-    def draw( self ):
+    def draw( self, asyncFunc=None ):
         self.displayPanel(False)
         #self.clearListBox()
         
@@ -190,7 +152,13 @@ class ListBoxPanel(Panel):
         self.displaySelector(line, Display.RED)
         
         item = None
+        count = 0
         while waiting:
+            if asyncFunc and (count % 10) == 0:
+                self.itemList = asyncFunc()
+                self.clearListBox()
+                self.fillListBox( start, False )
+                self.displaySelector( line, Display.RED )
             if self.display.getUpButton():
                 if line > 0:
                     self.displaySelector( line, Display.BLACK, False )
@@ -222,6 +190,7 @@ class ListBoxPanel(Panel):
                 print( 'Cancel Pressed' )
                 item = None
                 waiting = False
+            count += 1
             time.sleep( 0.1 )
         return item   
         
@@ -240,14 +209,14 @@ class Display:
         2)  update() is being called to often resulting in flashing screens.
         
     '''
-    BLACK  = 0
-    GREY   = 1
-    GREEN  = 2
-    RED    = 3
-    BLUE   = 4
-    PANEL  = 5
-    YELLOW = 6
-    ORANGE = 7
+    BLACK  = COLOR_BLACK
+    GREY   = COLOR_GREY
+    GREEN  = COLOR_GREEN
+    RED    = COLOR_RED
+    BLUE   = COLOR_BLUE
+    PANEL  = COLOR_PANEL
+    YELLOW = COLOR_YELLOW
+    ORANGE = COLOR_ORANGE
     TEXT_XOFFSET = BACKGROUND+5
     TEXT_YOFFSET = BACKGROUND+2
     TEXT_HEIGHT  = TEXT_HEIGHT
@@ -319,8 +288,11 @@ class Display:
             for i,msg in enumerate(strings):
                 self.display.text( msg, x+tabs[i], y, width, 2, fixed_width=False )
             
-    def textAt( self, message, line, tabs=None ):
-        width = self.listWidth - 2
+    def textAt( self, message, line, tabs=None, wrap=True ):
+        if wrap:
+            width = self.listWidth - 2
+        else:
+            width = self.display.measure_text( message, 2 ) + 10
         xpos  = self.TEXT_XOFFSET
         ypos  = self.TEXT_YOFFSET + (line * self.TEXT_HEIGHT)
         if tabs is None or len(tabs) == 0:

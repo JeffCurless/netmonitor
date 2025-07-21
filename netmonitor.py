@@ -1,11 +1,11 @@
 from batterystate import BatteryState
-from display import BaseItem, Display
-from wifitools import WLAN, WLANList, scanForWLANS, scanForSpecificWLAN
+from display import Display
+from wifitools import WLAN, WLANList, WIFIScanner
+from bletools import BLEScanner, BLEItem
+from displayhelper import BaseItem
 import time
 import gc
-
-bs = BatteryState()
-display = Display()
+import bluetooth
 
 class LANItem( BaseItem ):
     def __init__( self, wlan, function ):
@@ -31,7 +31,7 @@ class LANItem( BaseItem ):
         return f"{self.wlan.ssid}"
     
     def __str__(self):
-        return str(self.wlan)    
+        return str(self.wlan)   
 
 def dummy( item ):
     print( f"Called {item}" )
@@ -69,7 +69,6 @@ def watchSingleNetwork( item ):
     xpos = 2 #panel.startx
     panel.displayPanel(False)
     display.set_pen( Display.PANEL )
-    print( "Start Graph" )
     display.line( 0, 100, graphWidth, 100 )
     tabs = [0,100]
     while True:
@@ -79,7 +78,7 @@ def watchSingleNetwork( item ):
             return True
         if count % 20 == 0:
             display.LED( 0, 0, 128 )
-            lan = scanForSpecificWLAN( item.wlan.ssid, 1 )
+            lan = wscanner.scanForSpecificWLAN( item.wlan.ssid, 1 )
             if lan is None:
                 lan = item.wlan
             else:
@@ -105,6 +104,8 @@ def systemStatus(item):
     panel = display.createPanel( 'System Status' )
     count = 0
     tabs = [0, 180]
+    panel.displayPanel(False)
+    
     while not display.getCancelButton():
         if count % 20 == 0:
             panel.displayPanel(False)
@@ -122,14 +123,46 @@ def systemStatus(item):
         time.sleep( 0.1 )
     return False
 
+def watchSingleBLE( item ):
+    panel = display.createPanel( f"Monitoring {item.getName()}" )
+    panel.displayPanel(False)
+    count = 0
+    while True:
+        if display.getCancelButton():
+            return True
+        if display.getSelButton():
+            return True
+        if count % 20 == 0:
+            panel.textAt( f"Address Type: {item.getAddrType()}", 1, Display.GREY )
+            panel.textAtClear( 2 )
+            panel.textAt( f"RSSI: {item.rssi}",2, item.getColor() )
+            line = 3
+            for data in item.data:
+                panel.textAt( f"{data[0]}: {data[1]}",line,Display.GREY,wrap=False)
+                line += 1
+            display.update()
+        count += 1
+        time.sleep( 0.1 )
+        
+
 def bluetoothDisplay( item ):
     listBox = display.createListBox( 'Blue Tooth' )
     running = True
+    scanner.start_scan(0,active=True)
+    items = []
+    tabs = [0,190, 210, 270,0]
     while running:
-        item = listBox.draw()
-        print( f"Item is {item}" )
-        if item is None:
-            running = False
+        items = scanner.get_scan_results()
+        if len(items):
+            listBox.setList( items, tabs )
+            item = listBox.draw(asyncFunc=scanner.get_scan_results)
+            if item is None:
+                running = False
+            else:
+                function = item.getFunction()
+                running = function(item)
+        else:
+            time.sleep( 0.1 )
     return False
 
 def networkDisplay(item):
@@ -152,7 +185,7 @@ def networkDisplay(item):
     while running:
         panel.changeTitle( "Scanning...", True )
         display.LED( 0, 0, 128 )
-        scanForWLANS( wlanList, 1 )
+        wscanner.scanForWLANS( wlanList, 1 )
         wlanList.sortItems()
         items = []
         for lan in wlanList:
@@ -166,10 +199,15 @@ def networkDisplay(item):
             running = function( item )
     return False
     
+bs = BatteryState()
+scanner = BLEScanner(bluetooth.BLE(),watchSingleBLE)
+wscanner  =  WIFIScanner()
+display = Display()
+
 mainItems = []
-mainItems.append( BaseItem( f"Status", systemStatus ) )
+mainItems.append( BaseItem( f"Status",    systemStatus ) )
 mainItems.append( BaseItem( f"BlueTooth", bluetoothDisplay ) )
-mainItems.append( BaseItem( f"Networks", networkDisplay ) )
+mainItems.append( BaseItem( f"Networks",  networkDisplay ) )
 
 mainPanel = display.createListBox( "System Status" )
 mainPanel.setList( mainItems )

@@ -131,88 +131,51 @@ class WLANList:
         else:
             self.wlanlist.sort( reverse=True, key=sortFunction )
 
-           
-def scanForWLANS( wlanList, iterations = 10 ):
-    '''
-    scanForWLANS - This routine scans for WLANS on the network.
-    
-    This routine will automatically fill in the global wlanList.
-    
-    '''
-    wlan = network.WLAN()
-    wlan.active(True)
-
-    while( iterations > 0 ):
-        networks = wlan.scan()
-        for w in networks:
-            lan = WLAN( w[0].decode(),binascii.hexlify(w[1]).decode(),w[2],w[3],w[4],w[5])
-            wlanList.addItem(lan)
+class WIFIScanner:
+    def __init__(self):
+        self.wlan = network.WLAN()
+        self.wlan.active(True)
         
-        iterations -= 1
-        if iterations > 0:
-            time.sleep( 1 )
+    def scanForWLANS( self, wlanList, iterations = 1):
+        '''
+        Scan the network looking for wifi networks.
+        
+        Parameters:
+            wlanList    - A location to store the data found
+            iterations  - Number of times to scan prior to returning to the caller
+        
+        '''
 
-def scanForSpecificWLAN( ssid, iterations = 10 ):
-    '''
-    scanForSpecificWLAN - This routine scans for a specific SSID
-    
-    We scan for a specific SSID, and when found return it.  This routine
-    can be used to help graph the power of a specific SSID.
-    
-    '''
-    wlan = network.WLAN()
-    wlan.active(True)
+        while( iterations > 0 ):
+            networks = self.wlan.scan()
+            for w in networks:
+                lan = WLAN( w[0].decode(),binascii.hexlify(w[1]).decode(),w[2],w[3],w[4],w[5])
+                wlanList.addItem(lan)
+            
+            iterations -= 1
+            if iterations > 0:
+                time.sleep( 1 )
 
-    while( iterations > 0 ):
-        networks = wlan.scan()
-        for w in networks:
-            lan = WLAN( w[0].decode(),binascii.hexlify(w[1]).decode(),w[2],w[3],w[4],w[5])
-            if lan.ssid == ssid:
-                return lan
-        iterations -= 1
-        if iterations > 0:
-            time.sleep( 1 )
-    return None
+    def scanForSpecificWLAN( self, ssid, iterations = 10 ):
+        '''
+        scanForSpecificWLAN - This routine scans for a specific SSID
+        
+        We scan for a specific SSID, and when found return it.  This routine
+        can be used to help graph the power of a specific SSID.
+        
+        Parameters:
+            ssid       - The specific SSID to scan the network for.
+            iterations - The number of times to scan prior to returning to the caller
+            
+        '''
 
-'''    
-while True:
-    scanForWLANS(1)
-    scanForSpecificWLAN("MSD-Guest", 1)
-    y = 10
-    display.set_pen( BLACK )
-    display.clear()
-    wlanList.sortItems()
-    for lan in wlanList:
-        if y+15< HEIGHT:
-            if lan.ssid == "":
-                display.set_pen( RED )
-                display.text( f"{lan.getBSSID()} ",5,y,WIDTH,2)
-                #display.text( f"{len(lan.channel)} {lan.security}",text_width+5,y,WIDTH,2 )
-            else:
-                display.set_pen( GREY )
-                display.text( f"{lan.getSSID()} ",5,y,WIDTH,2)
-            display.text( f"{lan.channel:>2} {lan.rssi:>3}",text_width+5,y,WIDTH,2 )
-            y += 18
-    display.update()
-    time.sleep(1)
-
-
-while True:
-    lan = scanForSpecificWLAN("HACK_ME", 1)
-    y = 10
-    display.set_pen( BLACK )
-    display.clear()
-    wlanList.sortItems()
-    if lan != None:
-        if y+15< HEIGHT:
-            if lan.ssid == "":
-                display.set_pen( RED )
-                display.text( f"{lan.getBSSID()} ",5,y,WIDTH,2)
-            else:
-                display.set_pen( GREY )
-                display.text( f"{lan.getSSID()} ",5,y,WIDTH,2)
-            display.text( f"{lan.channel} {lan.rssi}",text_width+5,y,WIDTH,2 )
-            y += 18
-    display.update()
-    time.sleep(1)
-'''
+        while( iterations > 0 ):
+            networks = self.wlan.scan()
+            for w in networks:
+                lan = WLAN( w[0].decode(),binascii.hexlify(w[1]).decode(),w[2],w[3],w[4],w[5])
+                if lan.ssid == ssid:
+                    return lan
+            iterations -= 1
+            if iterations > 0:
+                time.sleep( 1 )
+        return None
