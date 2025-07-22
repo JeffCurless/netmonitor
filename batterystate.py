@@ -14,9 +14,7 @@ class BatteryState:
         '''
         raw = self.vsys.read_u16()
         volt = raw * self.conversion
-        #print( f"raw = {raw} voltage = {volt}" )
-        #if volt < self.empty:
-        #    volt = self.full
+        #print( f"raw = {raw} voltage = {volt} vsys={self.vsys}" )
         return volt
         
     def getPercentage( self ):
