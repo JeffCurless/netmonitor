@@ -160,28 +160,72 @@ def systemStatus(item):
     return False
 
 def watchSingleBLE( item ):
+    '''
+    Monitor a single Bluetooth entry.  The Select button will switch between
+    information collected mode, an a bar graph of the current RSSI of the device,
+    the graph helps in locating where the bluetooth device is by following a
+    stronger field strength.
+    
+    Parameters:
+        item - the item we are monitoring.  This item actually gets updated in
+               the background so we can see any new messages that come in.
+               
+    Returns:
+        True   - Continue processing the called from menu
+        False  - Terminate the called from menu
+    '''
     panel = display.createPanel( f"Monitoring {item.getName()}" )
     panel.displayPanel(False)
+    graphHeight = display.height - 2 #panel.height
+    graphWidth  = panel.width
     count = 0
+    displayMsgs = True
+    xpos = 2
     while True:
         if display.getCancelButton():
             return True
         if display.getSelButton():
-            return True
+            panel.clearPanel()
+            count = 0
+            if displayMsgs:
+                xpos = 2
+                display.set_pen( Display.PANEL )
+                display.line( 0, 100, graphWidth, 100 )
+                displayMsgs = False
+            else:
+                displayMsgs = True
+        #
         if count % 20 == 0:
             panel.textAt( f"Address Type: {item.getAddrType()}", 1, Display.GREY )
             panel.textAtClear( 2 )
             panel.textAt( f"RSSI: {item.rssi}",2, item.getColor() )
-            line = 3
-            for data in item.data:
-                panel.textAt( f"{data[0]}: {data[1]}",line,Display.GREY,wrap=False)
-                line += 1
+            if displayMsgs:
+                line = 3
+                for data in item.data:
+                    panel.textAt( f"{data[0]}: {data[1]}",line,Display.GREY,wrap=False)
+                    line += 1
+            else:
+                value = scaleValue( item.rssi, 100, graphHeight )
+                display.set_pen( item.getColor() )
+                displayGraphLine( xpos, value, graphHeight)
+                xpos += 2
+                if xpos > graphWidth:
+                    xpos = 2
             display.update()
         count += 1
         time.sleep( 0.1 )
         
 
 def bluetoothDisplay( item ):
+    '''
+    Display all of the bluetooth items we find.  The call to scanner.get_scan_results
+    simply returns any and all items we have located, the scanning is occuring in
+    the background.
+    
+    Parameters:
+        item - The item from the main menu
+        
+    '''
     listBox = display.createListBox( 'Blue Tooth' )
     running = True
     scanner.start_scan(0,active=True)
@@ -199,6 +243,8 @@ def bluetoothDisplay( item ):
                 running = function(item)
         else:
             time.sleep( 0.1 )
+    
+    scanner.stop_scan()
     return False
 
 def networkDisplay(item):

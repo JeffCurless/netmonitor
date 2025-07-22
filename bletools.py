@@ -113,12 +113,31 @@ class BLEItem(BaseItem):
         #return name
     
     def _addData( self, AdType, AdData ):
+        '''
+        Add an item to our advertisement data list.  Every item in the list is a
+        tuple consisting of the type of data, and the data itself.  If we already
+        have that data, toss it.  If not, add it to our stored data items
+        
+        Parameters:
+            AdType - Type of advertisement data inbound
+            AdData - Advertisement data we want to store.
+            
+        '''
         for item in self.data:
             if item[0] == AdType:
                 return
         self.data.append( (AdType, AdData ) )
         
     def _leSwap16( self, data ):
+        '''
+        Convert a 16 bit data item into a little endian data type (i.e. byte swap)
+        
+        Parameter:
+            Two bydes of data
+            
+        Returns:
+            The two bytes swapped.
+        '''
         value = [ data[1], data[0] ]
         return "".join( value ).upper()
         
@@ -268,7 +287,7 @@ class BLEScanner:
         return self._scan_results
     
     def stop_scan(self):
-        self.ble.irq( None )
+        self._ble.gap_scan( None )
 
 def makeAscii( data ):
     n = 2
