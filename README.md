@@ -6,7 +6,7 @@ A GUI based network and bluetooth monitor using a Raspberry PI Pico and a Pimorn
 ## Outstanding work
 - [ ] Modify the wifi code to constantly monitor for addresses much like the bluetooth module does
 - [ ] Comment all of the display code
-- [ ] Try to determine why the battery code works sometimes and not others
+- [X] Try to determine why the battery code works sometimes and not others
 - [ ] Overall cleanup of code
 
 > [!NOTE]
