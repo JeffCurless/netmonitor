@@ -1,6 +1,7 @@
 import bluetooth
 import time
 import re
+import gc
 
 from displayhelper import *
 from micropython import const
@@ -103,7 +104,7 @@ class BLEItem(BaseItem):
             return COLOR_RED
         
     def getName( self ):
-        return self.name
+        return self.addr
        
     def decodeName( self, data ):
         return "".join([chr(int(data[i],16)) for i in range(0,len(data)) ])
@@ -146,39 +147,41 @@ class BLEItem(BaseItem):
         if self.adv_type >= _ADV_IND and self.adv_type <= _ADV_SCAN_RSP:
             data = [self.adv_data[i:i+2] for i in range(0, len(self.adv_data), 2)]
             while len(data) > 0:
-                length = int(data[0],16)
-                AdType = int(data[1],16)
-                if AdType == _ADTYPE_COMPLETE:
-                    self.name = self.decodeName(data[2:length+1])
-                    self._addData( "CompleteName", self.name )
-                elif AdType == _ADTYPE_SHORT_NAME:
-                    self.name = self.decodeName(data[2:length+1])
-                    self._addData( "ShortName",self.name )
-                elif AdType == _ADTYPE_SERVICEDATA:
-                    self._addData( "UUID", "".join(data[2:length+1]) )
-                elif AdType == _ADTYPE_MAN_DATA:
-                    self._addData( "ManData", "".join(data[2:length+1]) )
-                elif AdType == _ADTYPE_FLAGS:
-                    self._addData( "Flags", "".join(data[2:length+1]) )
-                elif AdType == _ADTYPE_SERVICEID:
-                    value = self._leSwap16( data[2:length+1])
-                    if value == "FEAF" or value == "FEB0":
-                        value = "Nest Labs Inc"
-                    elif value == "FE96" or value == "FE97":
-                        value = "Tesla Motors"
-                    elif value == "1122":
-                        value = "BasicPrinting"
-                    self._addData( "Service ID", value )
-                elif AdType == _ADTYPE_SERVICEIDS:
-                    self._addData( "All Service IDs", "".join(data[2:length+1]) )
-                elif AdType == _ADTYPE_POWERLEVEL:
-                    self._addData( "PowerLevel", "".join(data[2:length+1]) )
-                else:
-                    self._addData( AdType, "".join(data[2:length+1]) )
-                data = data[length+1:]
+                try:
+                    length = int(data[0],16)
+                    AdType = int(data[1],16)
+                    if AdType == _ADTYPE_COMPLETE:
+                        self.name = self.decodeName(data[2:length+1])
+                        self._addData( "CompleteName", self.name )
+                    elif AdType == _ADTYPE_SHORT_NAME:
+                        self.name = self.decodeName(data[2:length+1])
+                        self._addData( "ShortName",self.name )
+                    elif AdType == _ADTYPE_SERVICEDATA:
+                        self._addData( "UUID", "".join(data[2:length+1]) )
+                    elif AdType == _ADTYPE_MAN_DATA:
+                        self._addData( "ManData", "".join(data[2:length+1]) )
+                    elif AdType == _ADTYPE_FLAGS:
+                        self._addData( "Flags", "".join(data[2:length+1]) )
+                    elif AdType == _ADTYPE_SERVICEID:
+                        value = self._leSwap16( data[2:length+1])
+                        if value == "FEAF" or value == "FEB0":
+                            value = "Nest Labs Inc"
+                        elif value == "FE96" or value == "FE97":
+                            value = "Tesla Motors"
+                        elif value == "1122":
+                            value = "BasicPrinting"
+                        self._addData( "Service ID", value )
+                    elif AdType == _ADTYPE_SERVICEIDS:
+                        self._addData( "All Service IDs", "".join(data[2:length+1]) )
+                    elif AdType == _ADTYPE_POWERLEVEL:
+                        self._addData( "PowerLevel", "".join(data[2:length+1]) )
+                    else:
+                        self._addData( AdType, "".join(data[2:length+1]) )
+                    data = data[length+1:]
+                except Exception as e:
+                    print( f'Exception data failure {self.adv_data} {"".join(data)} error {e}' )
         
     def __str__(self):
-        self.decode()
         return f"{self.name}\t{self.addr_type}\t{self.adv_type}\t{self.rssi}"
 
 class BLEList:
@@ -229,10 +232,12 @@ class BLEList:
         '''
         for item in self.mylist:
             if item.addr == bleItem.addr:
-                item.rssi     = bleItem.rssi
-                item.adv_type = bleItem.adv_type
-                item.adv_data = bleItem.adv_data
+                item.addr_type = bleItem.addr_type 
+                item.rssi      = bleItem.rssi
+                item.adv_type  = bleItem.adv_type
+                item.adv_data  = bleItem.adv_data
                 item.decode()
+                gc.collect()
                 return
         print( f"Found : {bleItem}\t{bleItem.adv_data}" )
         bleItem.decode()
@@ -317,12 +322,13 @@ if __name__ == "__main__":
     scanner = BLEScanner( ble, dummy )
     
     print( f"Running on {scanner.getMACAddress()}")
-    scanner.start_scan(10000,active=True)
+    scanner.start_scan(100000,active=True)
     
     print( "Listing found items..." )
    
     count = 0
-    while count < 20:
+    while count < 20000:
+        print( f"memory: {gc.mem_alloc()}" )
         time.sleep( 1 )
         count += 1  
     

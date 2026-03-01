@@ -8,29 +8,61 @@ import gc
 import bluetooth
 
 class LANItem( BaseItem ):
+    '''
+    A LAN/Wifi item that we have found, uses the BaseItem class, so that we have
+    the needed functionality for the graphics display code.
+    
+    Note:  Override the needed functions to ensure that the proper functionality
+           is presented when called.
+           
+    '''
     def __init__( self, wlan, function ):
+        '''
+        Parameters:
+             wlan     - A wifi wlan object
+             function - The function to hand off when someone calls "getFunction"
+        '''
         self.wlan = wlan
         msg = str(wlan)
         super().__init__( msg, function )
         
     def getColor(self):
+        '''
+        This member function is called when we want to determine the color to
+        print something in.  In the case of the WLAN, we want to convert the
+        RSSI to a color value, based on the standard of what is a good power
+        level and what is not.
+        
+        Returns:
+            A color that represents how good the signal is.
+        '''
         if self.wlan.rssi > -67:
-            return Display.GREEN
+            return Display.GREEN     # Excellent
         elif self.wlan.rssi > -70:
-            return Display.YELLOW
+            return Display.YELLOW    # Good
         elif self.wlan.rssi > -80:
-            return Display.ORANGE
+            return Display.ORANGE    # Limited
         elif self.wlan.rssi > -90:
-            return Display.RED
+            return Display.RED       # Poor
         else:
-            return Display.RED
+            return Display.RED       # Yeah, not worth it.
         
     def getName( self ):
+        '''
+        This member function returns the name of the WLAN object, note tht if
+        this is HIDDEN WLAN, we return the bssid instead of the SSID
+        
+        Returns:
+            The functional name of the WLAN
+        '''
         if self.wlan.ssid == "":
             return f"{self.wlan.bssid}"
         return f"{self.wlan.ssid}"
     
     def __str__(self):
+        '''
+        Override the Dunder function to return a string based off of the wlan
+        '''
         return str(self.wlan)   
 
 def dummy( item ):
@@ -215,6 +247,9 @@ def watchSingleBLE( item ):
         count += 1
         time.sleep( 0.1 )
         
+def bluetoothAsyncFunction():
+    gc.collect()
+    return scanner.get_scan_results()
 
 def bluetoothDisplay( item ):
     '''
@@ -235,12 +270,12 @@ def bluetoothDisplay( item ):
         items = scanner.get_scan_results()
         if len(items):
             listBox.setList( items, tabs )
-            item = listBox.draw(asyncFunc=scanner.get_scan_results)
+            item = listBox.draw(asyncFunc=bluetoothAsyncFunction)
             if item is None:
                 running = False
             else:
                 function = item.getFunction()
-                running = function(item)
+                running  = function(item)
         else:
             time.sleep( 0.1 )
     

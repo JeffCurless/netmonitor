@@ -72,3 +72,11 @@ class BaseItem:
             The text string
         '''
         return self.text
+    
+if __name__ == "__main__":
+    
+    item = BaseItem( "Test", defaultColor=COLOR_GREY)
+    assert( item.getColor() == COLOR_GREY )
+    assert( item.getFunction() == None )
+    assert( str(item) == "Test" )
+

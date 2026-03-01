@@ -2,12 +2,13 @@
 # This file contains the GUI for a network sniffing PICO-W based project
 # 
 
-from picographics import PicoGraphics, DISPLAY_PICO_DISPLAY_2
+from picographics import PicoGraphics, DISPLAY_PICO_DISPLAY_2, PEN_P8, PEN_P4
 from pimoroni import RGBLED
 from pimoroni import Button
 from machine import Pin
 from batterystate import BatteryState
 import time
+import gc
 
 from displayhelper import *
 
@@ -155,10 +156,12 @@ class ListBoxPanel(Panel):
         count = 0
         while waiting:
             if asyncFunc and (count % 10) == 0:
+                # Once a second check check the async function...
                 self.itemList = asyncFunc()
                 self.clearListBox()
                 self.fillListBox( start, False )
                 self.displaySelector( line, Display.RED )
+                gc.collect()
             if self.display.getUpButton():
                 if line > 0:
                     self.displaySelector( line, Display.BLACK, False )
@@ -208,7 +211,24 @@ class Display:
         1)  update() is not being called, so ... nothing is being displayed
         2)  update() is being called to often resulting in flashing screens.
         
+    Note: Graphics Modes:
+    
+    1) PEN_P4     - (4 bit) Allows for 16 colors to be selected, each must be predefined
+    2) PEN_P8     - (8 bit) Allows for 256 colors
+    3) PEN_RGB565 - (16 bit) Allows for 64K colors... and LOTS of RAM used
+    
+    Memory used by Display Buffer:
+    
+    DISPLAY_PICO_DISPLAY_2 is 320x240 pixels, or 76,800 pixles.
+    
+    PEN_P4     - 76,800 pixels at 4 bits per pixel  ->  38,400 bytes
+    PEN_P8     - 76,800 pixels at 8 bits per pixel  ->  76,800 bytes
+    PEN_RGB565 - 76,800 pixels at 16 bits per pixel -> 153,600 bytes
+    
+    PEN_4 takes the least ram, and if you are only using a few colors... it works
+    out quite well.
     '''
+    
     BLACK  = COLOR_BLACK
     GREY   = COLOR_GREY
     GREEN  = COLOR_GREEN
@@ -217,6 +237,7 @@ class Display:
     PANEL  = COLOR_PANEL
     YELLOW = COLOR_YELLOW
     ORANGE = COLOR_ORANGE
+    
     TEXT_XOFFSET = BACKGROUND+5
     TEXT_YOFFSET = BACKGROUND+2
     TEXT_HEIGHT  = TEXT_HEIGHT
@@ -227,20 +248,26 @@ class Display:
         This class simply wraps the PicoGraphics class to make this a little
         easier on the caller.  In some situations, extending the functionality
         of the orignal.
+        
+        Using PEN_P4 Graphics mode, this provides a 16 color palette that we can use,
+        each pen MUST be predefined.
         '''
-        self.display = PicoGraphics(display=DISPLAY_PICO_DISPLAY_2, rotate=0)
+        self.display = PicoGraphics(display=DISPLAY_PICO_DISPLAY_2, rotate=0, pen_type=PEN_P4)
+        
         self.display.set_font( "bitmap8" )
         self.width, self.height = self.display.get_bounds()
         self.listWidth  = self.width - (BACKGROUND*2)
         self.listHeight = self.height - (BACKGROUND*2)
-        self.blackPen   = self.display.create_pen(0, 0, 0)
+        
+        self.blackPen   = self.display.create_pen(  0,   0,   0)
         self.greyPen    = self.display.create_pen(190, 190, 190)
-        self.GreenPen   = self.display.create_pen(0, 255, 0)
-        self.RedPen     = self.display.create_pen(255, 0, 0)
-        self.BluePen    = self.display.create_pen (0, 0, 255 )
-        self.panelPen   = self.display.create_pen( 0, 0, 128 )
-        self.yellowPen  = self.display.create_pen( 255,255,0 )
-        self.orangePen  = self.display.create_pen( 255, 165, 0 )
+        self.GreenPen   = self.display.create_pen(  0, 255,   0)
+        self.RedPen     = self.display.create_pen(255,   0,   0)
+        self.BluePen    = self.display.create_pen(  0,   0, 255)
+        self.panelPen   = self.display.create_pen(  0,   0, 128)
+        self.yellowPen  = self.display.create_pen(255, 255,   0)
+        self.orangePen  = self.display.create_pen(255, 165,   0)
+        
         self.led        = RGBLED(6, 7, 8)
         self.led.set_rgb( 0, 0, 0 )
         #
@@ -253,26 +280,46 @@ class Display:
         self.maxTextEntries = (self.listHeight - BACKGROUND + 2)//TEXT_HEIGHT
                      
     def set_pen( self, pen ):
-        if pen == self.BLACK:
+        '''
+        Set the pen to a new color.  We use the defined constant colors in the
+        Display class to determine which pen should be used.  This makes it so
+        no other code needs to know what the PEN object type is.
+        
+        Parameters:
+            pen    - Which color value do we want to set the pen to
+            
+        Note:  Micropython does not yet support match/case syntax.
+        '''
+        if pen == Display.BLACK:
             self.display.set_pen( self.blackPen )
-        elif pen == self.GREY:
+        elif pen == Display.GREY:
             self.display.set_pen( self.greyPen )
-        elif pen == self.GREEN:
+        elif pen == Display.GREEN:
             self.display.set_pen( self.GreenPen )
-        elif pen == self.RED:
+        elif pen == Display.RED:
             self.display.set_pen( self.RedPen )
-        elif pen == self.BLUE:
+        elif pen == Display.BLUE:
             self.display.set_pen( self.BluePen )
-        elif pen == self.PANEL:
+        elif pen == Display.PANEL:
             self.display.set_pen( self.panelPen )
-        elif pen == self.YELLOW:
+        elif pen == Display.YELLOW:
             self.display.set_pen( self.yellowPen )
-        elif pen == self.ORANGE:
+        elif pen == Display.ORANGE:
             self.display.set_pen( self.orangePen )
         else:
             self.display.set_pen( self.BluePen )
         
     def set_backlight( self, value ):
+        '''
+        Turn on the backlight to a value between 0 and 1
+        
+        Parameter:
+            value - Value of the backlight to set
+        '''
+        if value < 0.0:
+            value = 0.0
+        elif value > 1.0:
+            value = 1.0
         self.display.set_backlight(value)
         
     def update(self):
@@ -340,12 +387,11 @@ def dummy( item ):
     print( f"Called Dummy with {item}")
     
 if __name__ == "__main__":
-    display = Display()
     items = []
     tabs = [0,270]
     for i in range(15):
         items.append( BaseItem( f"Line Number {i+1}\tWWW", dummy ) )
-        
+    display = Display()
     panel = display.createListBox( 'Test...' )
     panel.setList( items, tabs )
     panel.draw()
