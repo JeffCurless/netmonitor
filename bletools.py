@@ -150,6 +150,8 @@ class BLEItem(BaseItem):
                 try:
                     length = int(data[0],16)
                     AdType = int(data[1],16)
+                    if length == 0:
+                        break
                     if AdType == _ADTYPE_COMPLETE:
                         self.name = self.decodeName(data[2:length+1])
                         self._addData( "CompleteName", self.name )
@@ -180,6 +182,7 @@ class BLEItem(BaseItem):
                     data = data[length+1:]
                 except Exception as e:
                     print( f'Exception data failure {self.adv_data} {"".join(data)} error {e}' )
+                    
         
     def __str__(self):
         return f"{self.name}\t{self.addr_type}\t{self.adv_type}\t{self.rssi}"
