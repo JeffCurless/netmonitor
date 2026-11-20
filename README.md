@@ -1,5 +1,11 @@
 # NetMonitor
 
+> [!WARNING]
+> **This project is no longer maintained.** It has been replaced by
+> **[NetMon](https://github.com/JeffCurless/netmon)**, which adds Pico 2 W support,
+> continuous WiFi/BLE scanning, and runs as an app on picoOS.
+> Please use NetMon for new installs.
+
 A GUI based network and bluetooth monitor using a Raspberry PI Pico and a Pimornoni DISPLAY_PACK_2
 
 
